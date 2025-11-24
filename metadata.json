@@ -1,0 +1,5 @@
+{
+  "name": "Document Digitizer",
+  "description": "A tool for manufacturing support staff to digitize handwritten legacy Bills of Materials into editable Excel-ready formats using Gemini Vision.",
+  "requestFramePermissions": []
+}
