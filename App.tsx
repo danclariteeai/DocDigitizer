@@ -3,7 +3,6 @@ import Header from './components/Header';
 import UploadArea from './components/UploadArea';
 import DynamicTable from './components/BOMTable';
 import HistorySidebar from './components/HistorySidebar';
-import AdminSettings from './components/AdminSettings';
 import { ExtractedItem, ProcessingState, HistoryItem, DocumentType, DocConfig } from './types';
 import { transcribeDocument, FileInput } from './services/geminiService';
 
@@ -38,7 +37,7 @@ const DEFAULT_CONFIGS: Record<DocumentType, DocConfig> = {
       { key: 'unitPrice', label: 'Unit Price', minWidth: 100 },
       { key: 'total', label: 'Total', minWidth: 100 },
     ]
-},
+  },
   PO: {
     type: 'PO',
     label: 'Purchase Order',
@@ -76,19 +75,8 @@ const App: React.FC = () => {
   
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
   const [processingState, setProcessingState] = useState<ProcessingState>({ status: 'idle' });
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
-
-  // Configuration State (persisted)
-  const [docConfigs, setDocConfigs] = useState<Record<DocumentType, DocConfig>>(() => {
-    try {
-      const saved = localStorage.getItem('doc_configs');
-      return saved ? { ...DEFAULT_CONFIGS, ...JSON.parse(saved) } : DEFAULT_CONFIGS;
-    } catch {
-      return DEFAULT_CONFIGS;
-    }
-  });
 
   // History State (persisted)
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -99,10 +87,6 @@ const App: React.FC = () => {
       return [];
     }
   });
-
-  useEffect(() => {
-    localStorage.setItem('doc_configs', JSON.stringify(docConfigs));
-  }, [docConfigs]);
 
   useEffect(() => {
     localStorage.setItem('bom_history', JSON.stringify(history));
@@ -147,7 +131,8 @@ const App: React.FC = () => {
     setProcessingState({ status: 'processing', message: `Analyzing ${selectedFiles.length} ${docType} page(s)...` });
     
     try {
-      const prompt = docConfigs[docType].prompt;
+      // Use DEFAULT_CONFIGS directly
+      const prompt = DEFAULT_CONFIGS[docType].prompt;
       // Map to format expected by service
       const filesForService: FileInput[] = loadedFiles.map(f => ({ base64: f.base64, mimeType: f.mimeType }));
       
@@ -177,7 +162,7 @@ const App: React.FC = () => {
         message: error.message || 'Unknown error occurred' 
       });
     }
-  }, [docConfigs]);
+  }, []);
 
   const handleHistorySelect = useCallback((item: HistoryItem) => {
     setExtractedItems(item.items);
@@ -216,7 +201,8 @@ const App: React.FC = () => {
   const handleExport = () => {
     if (extractedItems.length === 0) return;
 
-    const columns = docConfigs[currentDocType].columns;
+    // Use DEFAULT_CONFIGS directly
+    const columns = DEFAULT_CONFIGS[currentDocType].columns;
     const headerRow = columns.map(c => c.label).join(',');
     const rows = extractedItems.map(item => 
       columns.map(col => `"${(item[col.key] || '').replace(/"/g, '""')}"`).join(',')
@@ -235,7 +221,7 @@ const App: React.FC = () => {
 
   return (
     <>
-      <Header onOpenAdmin={() => setIsAdminOpen(true)} />
+      <Header />
       
       <div className="flex flex-1 overflow-hidden h-full">
         <HistorySidebar 
@@ -267,7 +253,7 @@ const App: React.FC = () => {
               {/* Preview Panel */}
               <div className="w-full lg:w-1/3 flex flex-col bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden shrink-0 h-[300px] lg:h-auto">
                 <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                   <h2 className="font-semibold text-slate-800 text-sm">Original {docConfigs[currentDocType].label}</h2>
+                   <h2 className="font-semibold text-slate-800 text-sm">Original {DEFAULT_CONFIGS[currentDocType].label}</h2>
                    <div className="flex gap-3 items-center">
                      {filePreviews.length > 1 && (
                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -320,7 +306,7 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-center mb-4">
                        <div className="flex items-center gap-2">
                          <span className="text-sm font-semibold text-slate-700 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-                           {docConfigs[currentDocType].label}
+                           {DEFAULT_CONFIGS[currentDocType].label}
                          </span>
                        </div>
                        <button 
@@ -341,7 +327,7 @@ const App: React.FC = () => {
                       {extractedItems.length > 0 ? (
                         <DynamicTable 
                           items={extractedItems} 
-                          columns={docConfigs[currentDocType].columns}
+                          columns={DEFAULT_CONFIGS[currentDocType].columns}
                           onUpdateItem={handleUpdateItem}
                           onDeleteItem={handleDeleteItem}
                         />
@@ -360,18 +346,6 @@ const App: React.FC = () => {
           )}
         </main>
       </div>
-
-      {isAdminOpen && (
-        <AdminSettings 
-          configs={docConfigs}
-          onSave={setDocConfigs}
-          onClose={() => setIsAdminOpen(false)}
-          onReset={() => {
-            setDocConfigs(DEFAULT_CONFIGS);
-            setIsAdminOpen(false);
-          }}
-        />
-      )}
     </>
   );
 };
